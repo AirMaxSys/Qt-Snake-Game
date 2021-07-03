@@ -53,28 +53,54 @@ void MainWindow::draw_one_tiny_rect(QColor color, QPoint pos)
 
 void MainWindow::draw_snake_and_food(void)
 {
-    draw_one_tiny_rect(QColor(Qt::red), snake_pos);
+    painter.begin(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(Qt::white);
+    painter.setBrush(Qt::red);
+    // draw snake head
+    painter.drawEllipse(QPoint(lp_snake_pos.first().x()-1 + BS_RECT_SIDE/2,
+                               lp_snake_pos.first().y()-1 + BS_RECT_SIDE/2),
+                        BS_RECT_SIDE/2-2, BS_RECT_SIDE/2-2);
+    // draw snake body
+    for (QList<QPoint>::iterator it = lp_snake_pos.begin()+1; it != lp_snake_pos.end(); ++it) {
+        painter.drawRect(it->x(), it->y(), BS_RECT_SIDE, BS_RECT_SIDE);
+    }
+    painter.end();
+
+    // draw snake food
     draw_one_tiny_rect(LIGHT_GREEN, food_pos);
 }
 
 void MainWindow::snake_move(Snake_dir dir)
 {
+    QPoint s_head_pos = lp_snake_pos.first();
+
+    // move body
     if (SNAKE_DIR_RIGHT == dir) {
-        snake_pos.setX(snake_pos.x() + BS_RECT_SIDE);
-        if (snake_pos.x() >= BS_POSX+BS_RECTS_W)
-            snake_pos.setX(BS_POSX);
+        lp_snake_pos.push_front(QPoint((s_head_pos.x() + BS_RECT_SIDE), s_head_pos.y()));
     } else if (SNAKE_DIR_LEFT == dir) {
-        snake_pos.setX(snake_pos.x() - BS_RECT_SIDE);
-        if (snake_pos.x() < BS_POSX)
-            snake_pos.setX(BS_POSX+BS_RECTS_W-BS_RECT_SIDE);
+        lp_snake_pos.push_front(QPoint((s_head_pos.x() - BS_RECT_SIDE), s_head_pos.y()));
     } else if (SNAKE_DIR_DOWN == dir) {
-        snake_pos.setY(snake_pos.y() + BS_RECT_SIDE);
-        if (snake_pos.y() >= BS_POSY+BS_RECTS_H)
-            snake_pos.setY(BS_POSY);
+        lp_snake_pos.push_front(QPoint(s_head_pos.x(), (s_head_pos.y() + BS_RECT_SIDE)));
     } else {
-        snake_pos.setY(snake_pos.y() - BS_RECT_SIDE);
-        if (snake_pos.y() < BS_POSY)
-            snake_pos.setY(BS_POSY+BS_RECTS_H-BS_RECT_SIDE);
+        lp_snake_pos.push_front(QPoint(s_head_pos.x(), (s_head_pos.y() - BS_RECT_SIDE)));
+    }
+    // eras last item of snake body
+    lp_snake_pos.pop_back();
+
+    // eat food
+    if (lp_snake_pos.first() == food_pos) {
+        lp_snake_pos.push_back(QPoint((lp_snake_pos.last().x() - BS_RECT_SIDE), lp_snake_pos.last().y()));
+        qDebug() << "hit food";
+    }
+
+    // snake hit window bound or it self
+    if ((lp_snake_pos.first().x() >= BS_POSX+BS_RECTS_W) ||
+        (lp_snake_pos.first().x() < BS_POSX) ||
+        (lp_snake_pos.first().y() >= BS_POSY+BS_RECTS_H) ||
+        (lp_snake_pos.first().y() < BS_POSY)) {
+        qDebug() << "Game over";
+        game_stu = GAME_OVER;
     }
 }
 
@@ -82,10 +108,10 @@ void MainWindow::make_snake_food(void)
 {
     // Generate random coordinate for snake food
     // TODO:food not in the postion of snake
-    if (init_flag || food_pos == snake_pos) {
+    if (game_stu == GAME_BEGIN || lp_snake_pos.indexOf(food_pos) != -1) {
         food_pos.setX(BS_POSX+QRandomGenerator::global()->bounded(BS_RECTS_NUM_W-1)*BS_RECT_SIDE);
         food_pos.setY(BS_POSY+QRandomGenerator::global()->bounded(BS_RECTS_NUM_H-1)*BS_RECT_SIDE);
-        init_flag = false;
+        game_stu = GAME_RUNING;
     }
 }
 
@@ -94,9 +120,9 @@ void MainWindow::paintEvent(QPaintEvent *event)
     Q_UNUSED(event);
 
     setup_backscr();
-    snake_move(s_dir);
-    make_snake_food();
     draw_snake_and_food();
+    make_snake_food();
+    snake_move(s_dir);
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *event)
@@ -125,6 +151,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     case Qt::Key_Escape:
         break;
     }
+    update();
 }
 
 MainWindow::MainWindow(QWidget *parent)
@@ -135,18 +162,23 @@ MainWindow::MainWindow(QWidget *parent)
     setWindowTitle("SNAKE");
     setStyleSheet("background-color: #333333;");
 
-    init_flag = true;
-
+    game_stu = GAME_BEGIN;
     food_pos = QPoint(BS_POSX, BS_POSY);
-    snake_pos.setX(BS_POSX+(BS_RECTS_NUM_W/2-1)*BS_RECT_SIDE);
-    snake_pos.setY(BS_POSY+(BS_RECTS_NUM_H/2-1)*BS_RECT_SIDE);
     s_dir = SNAKE_DIR_RIGHT;
-
+    for (qint32 i = 0; i < 3; ++i)
+        lp_snake_pos.push_back(QPoint((BS_POSX+(BS_RECTS_NUM_W/2-i)*BS_RECT_SIDE),
+                                      (BS_POSY+BS_RECTS_NUM_H/2*BS_RECT_SIDE)));
+    qDebug() << lp_snake_pos;
+#if 1
     p_move_snake_timer = new QTimer(this);
     connect(p_move_snake_timer, &QTimer::timeout, this, [=]() {
         update();
     });
     p_move_snake_timer->start(100);
+#else
+    QTimer::singleShot(100, this, [=]() {update();});
+#endif
+
 }
 
 MainWindow::~MainWindow()

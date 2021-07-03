@@ -6,6 +6,7 @@
 #include <QPaintEvent>
 #include <QPainter>
 #include <QRectF>
+#include <QList>
 
 class MainWindow : public QMainWindow
 {
@@ -31,9 +32,12 @@ private:
         SNAKE_DIR_UP, SNAKE_DIR_DOWN,
         SNAKE_DIR_LEFT, SNAKE_DIR_RIGHT
     } s_dir;
-    bool init_flag;
+    enum Game_stu {
+        GAME_BEGIN, GAME_PAUSE, GAME_RUNING, GAME_OVER
+    } game_stu;
+
     QPainter painter;
-    QPoint snake_pos;
+    QList<QPoint> lp_snake_pos;
     QPoint food_pos;
     QTimer *p_move_snake_timer;
 
