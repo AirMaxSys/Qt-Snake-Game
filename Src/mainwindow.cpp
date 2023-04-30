@@ -8,36 +8,27 @@
 #define LIGHT_BLACK QColor("#333333")
 #define LIGHT_GREEN QColor("#90EE90")
 
-void MainWindow::setup_backscr(void)
+void MainWindow::draw_background(void)
 {
-    bool flag = true;
-
     painter.begin(this);
-
-    // Draw back screen frame
+    // Setup game area
     painter.setPen(QPen(Qt::white, 8));
-    painter.drawRect(BS_POSX, BS_POSY,
-                     BS_RECT_SIDE*BS_RECTS_NUM_W,
-                     BS_RECT_SIDE*BS_RECTS_NUM_H);
+    painter.drawRect(BS_POSX, BS_POSY, BS_RECT_SIDE*BS_RECTS_NUM_W, \
+        BS_RECT_SIDE*BS_RECTS_NUM_H);
 
-    // Fill with small rects
+    // Draw checkerboard
+    QRectF rect = QRectF(BS_POSX, BS_POSY, BS_RECT_SIDE, BS_RECT_SIDE);
+    QColor col = LIGHT_BLUE;
+    painter.setPen(Qt::black);
     for (int x = 0; x < BS_RECTS_NUM_W; ++x) {
-        flag = !flag;
+        col = (x % 2) ? Qt::black : LIGHT_BLUE;
         for (int y = 0; y < BS_RECTS_NUM_H; ++y) {
-            QRectF rect = QRectF(BS_POSX+BS_RECT_SIDE*x,
-                                 BS_POSY+BS_RECT_SIDE*y,
-                                 BS_RECT_SIDE,
-                                 BS_RECT_SIDE);
-            if (flag) {
-                painter.setPen(QPen(LIGHT_BLUE));
-                painter.setBrush(LIGHT_BLUE);
-            } else {
-                painter.setPen(QPen(LIGHT_BLACK));
-                painter.setBrush(LIGHT_BLACK);
-            }
-            flag = !flag;
+            painter.setBrush(col);
             painter.drawRect(rect);
+            rect.translate(0, BS_RECT_SIDE);
+            col = (col == LIGHT_BLUE) ? Qt::black : LIGHT_BLUE;
         }
+        rect.moveTo(BS_POSX+(x+1)*BS_RECT_SIDE, BS_POSY);
     }
     painter.end();
 }
@@ -119,7 +110,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
 
-    setup_backscr();
+    draw_background();
     draw_snake_and_food();
     make_snake_food();
     snake_move(s_dir);
