@@ -42,7 +42,7 @@ enum GAME_STATUS
     GAME_BEGIN,
     GAME_PAUSE,
     GAME_RUNING,
-    GAME_OVER
+    GAME_OVER,
 };
 
 class MainWindow : public QMainWindow
@@ -55,7 +55,7 @@ public:
 
 private:
     QPainter m_painter;
-    QList<QPoint> m_snake;
+    QVector<QPoint> m_snake;
     QPoint m_food;
     QTimer *m_timer;
     MOVING_DIRECTION m_direction;
@@ -64,10 +64,11 @@ private:
     void draw_one_tiny_rect(QColor color, QPoint pos);
     void draw_background(void);
     void draw_snake_and_food(void);
-    void make_snake_food(void);
+    void generate_food(void);
     void snake_move(MOVING_DIRECTION dir);
     void setup(void);
     void run(void);
+    void pause(void);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
