@@ -7,6 +7,8 @@
 #include <QPainter>
 #include <QRectF>
 #include <QList>
+#include <QDebug>
+#include <QRandomGenerator>
 
 enum Window_size
 {
@@ -27,15 +29,15 @@ enum Back_screen_para
     BS_RECTS_H = BS_RECTS_NUM_H * BS_RECT_SIDE,
 };
 
-enum Snake_dir
+enum MOVING_DIRECTION
 {
-    SNAKE_DIR_UP,
-    SNAKE_DIR_DOWN,
-    SNAKE_DIR_LEFT,
-    SNAKE_DIR_RIGHT
+    MOVING_DIRECTION_UP,
+    MOVING_DIRECTION_DOWN,
+    MOVING_DIRECTION_LEFT,
+    MOVING_DIRECTION_RIGHT
 };
 
-enum Game_stu
+enum GAME_STATUS
 {
     GAME_BEGIN,
     GAME_PAUSE,
@@ -52,17 +54,20 @@ public:
     ~MainWindow();
 
 private:
-    QPainter painter;
-    QList<QPoint> lp_snake_pos;
-    QPoint food_pos;
-    QTimer *p_move_snake_timer;
-    Snake_dir s_dir;
-    Game_stu game_stu;
+    QPainter m_painter;
+    QList<QPoint> m_snake;
+    QPoint m_food;
+    QTimer *m_timer;
+    MOVING_DIRECTION m_direction;
+    GAME_STATUS m_status;
+
     void draw_one_tiny_rect(QColor color, QPoint pos);
     void draw_background(void);
     void draw_snake_and_food(void);
     void make_snake_food(void);
-    void snake_move(Snake_dir dir);
+    void snake_move(MOVING_DIRECTION dir);
+    void setup(void);
+    void run(void);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
