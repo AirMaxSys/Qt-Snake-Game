@@ -7,11 +7,9 @@
 void MainWindow::draw_background(void)
 {
     m_painter.begin(this);
-    // Setup game area
+    // draw gaming area boxe
     m_painter.setPen(QPen(Qt::white, 8));
-    m_painter.drawRect(BS_POSX, BS_POSY, BS_RECT_SIDE*BS_RECTS_NUM_W, \
-        BS_RECT_SIDE*BS_RECTS_NUM_H);
-
+    m_painter.drawRect(m_gaming_area);
     // Draw checkerboard
     QRectF rect = QRectF(BS_POSX, BS_POSY, BS_RECT_SIDE, BS_RECT_SIDE);
     QColor col = LIGHT_BLUE;
@@ -29,65 +27,69 @@ void MainWindow::draw_background(void)
     m_painter.end();
 }
 
-void MainWindow::draw_one_tiny_rect(QColor color, QPoint pos)
-{
-    m_painter.begin(this);
-    m_painter.setPen(Qt::white);
-    m_painter.setBrush(color);
-    m_painter.drawRect(pos.x(), pos.y(), BS_RECT_SIDE, BS_RECT_SIDE);
-    m_painter.end();
-}
-
 void MainWindow::draw_snake_and_food(void)
 {
+    // Setup pen
     m_painter.begin(this);
     m_painter.setRenderHint(QPainter::Antialiasing);
     m_painter.setPen(Qt::white);
     m_painter.setBrush(Qt::red);
-    // draw snake head
-    QRectF rect = QRectF(m_snake.first().x(), m_snake.first().y(), BS_RECT_SIDE, BS_RECT_SIDE);
-    m_painter.drawEllipse(rect);
-    // draw snake body
-    for (auto it = m_snake.begin()+1; it != m_snake.end(); ++it) {
-        rect.moveTo(it->x(), it->y());
-        m_painter.drawRect(rect);
-    }
-    m_painter.end();
 
-    // draw snake food
-    draw_one_tiny_rect(LIGHT_GREEN, m_food);
+    // draw snake
+    m_painter.drawEllipse(m_snake[0]);
+    m_painter.drawRects(&m_snake[1], m_snake.count()-1);
+
+    // draw food
+    m_painter.setBrush(LIGHT_GREEN);
+    m_painter.drawRect(m_food);
+
+    m_painter.end();
 }
 
-void MainWindow::snake_move(MOVING_DIRECTION dir)
+void MainWindow::snake_move(void)
 {
-    QPoint s_head_pos = m_snake.first();
+    QRect snake_head = m_snake[0];
 
     // move body
-    if (MOVING_DIRECTION_RIGHT == dir) {
-        m_snake.push_front(QPoint((s_head_pos.x() + BS_RECT_SIDE), s_head_pos.y()));
-    } else if (MOVING_DIRECTION_LEFT == dir) {
-        m_snake.push_front(QPoint((s_head_pos.x() - BS_RECT_SIDE), s_head_pos.y()));
-    } else if (MOVING_DIRECTION_DOWN == dir) {
-        m_snake.push_front(QPoint(s_head_pos.x(), (s_head_pos.y() + BS_RECT_SIDE)));
+    if (MOVING_DIRECTION_RIGHT == m_direction) {
+        snake_head.translate(BS_RECT_SIDE, 0);
+    } else if (MOVING_DIRECTION_LEFT == m_direction) {
+        snake_head.translate(-BS_RECT_SIDE, 0);
+    } else if (MOVING_DIRECTION_DOWN == m_direction) {
+        snake_head.translate(0, BS_RECT_SIDE);
     } else {
-        m_snake.push_front(QPoint(s_head_pos.x(), (s_head_pos.y() - BS_RECT_SIDE)));
+        snake_head.translate(0, -BS_RECT_SIDE);
     }
-    // erase last item of snake body
+    m_snake.push_front(snake_head);
     m_snake.pop_back();
 
     // eat food
     if (m_snake.first() == m_food) {
-        m_snake.push_back(QPoint((m_snake.last().x() - BS_RECT_SIDE), m_snake.last().y()));
+        auto penultimate = m_snake[m_snake.count()-2];
+        auto last = m_snake.last();
+        if (penultimate.x() - last.x() > 0) {
+            last.translate(BS_RECT_SIDE, 0);
+        } else if (penultimate.x() - last.x() < 0) {
+            last.translate(-BS_RECT_SIDE, 0);
+        } else if (penultimate.y() - last.y() > 0) {
+            last.translate(0, BS_RECT_SIDE);
+        } else if (penultimate.y() - last.y() < 0) {
+            last.translate(0, -BS_RECT_SIDE);
+        }
+        m_snake.push_back(last);
         generate_food();
-        qDebug() << "hit food";
+        qDebug() << "ate food";
     }
 
-    // snake hit window bound or it self
-    if ((m_snake.first().x() >= BS_POSX+BS_RECTS_W) ||
-        (m_snake.first().x() < BS_POSX) ||
-        (m_snake.first().y() >= BS_POSY+BS_RECTS_H) ||
-        (m_snake.first().y() < BS_POSY)) {
-        qDebug() << "Game over";
+    // check if snake in gaming area 
+    if (!m_gaming_area.contains(m_snake[0])) {
+        qDebug() << "Game over - out of box";
+        m_status = GAME_OVER;
+    }
+
+    // check if snake body is overlap
+    if (m_snake.mid(1).contains(m_snake[0])) {
+        qDebug() << "Game over - body overlayp";
         m_status = GAME_OVER;
     }
 }
@@ -99,8 +101,48 @@ void MainWindow::generate_food(void)
     do {
         rand_x = BS_POSX+QRandomGenerator::global()->bounded(BS_RECTS_NUM_W-1)*BS_RECT_SIDE;
         rand_y = BS_POSY+QRandomGenerator::global()->bounded(BS_RECTS_NUM_H-1)*BS_RECT_SIDE;
-        m_food = QPoint(rand_x, rand_y);
+        m_food = QRect(rand_x, rand_y, BS_RECT_SIDE, BS_RECT_SIDE);
     } while (m_snake.indexOf(m_food) >= 0);
+}
+
+void MainWindow::generate_snake(void)
+{
+    int rand_x = 0, rand_y = 0;
+    QRect head;
+
+    do {
+        rand_x = BS_POSX+QRandomGenerator::global()->bounded(BS_RECTS_NUM_W-1)*BS_RECT_SIDE;
+        rand_y = BS_POSY+QRandomGenerator::global()->bounded(BS_RECTS_NUM_H-1)*BS_RECT_SIDE;
+        head = QRect(rand_x, rand_y, BS_RECT_SIDE, BS_RECT_SIDE);
+    } while (head == m_food);
+
+    m_direction = (MOVING_DIRECTION)QRandomGenerator::global()->bounded(4);
+    if (MOVING_DIRECTION_RIGHT == m_direction) {
+        m_snake.append(head);
+        head.translate(-BS_RECT_SIDE, 0);
+        m_snake.append(head);
+        head.translate(-BS_RECT_SIDE, 0);
+        m_snake.append(head);
+    } else if (MOVING_DIRECTION_LEFT == m_direction) {
+        m_snake.append(head);
+        head.translate(BS_RECT_SIDE, 0);
+        m_snake.append(head);
+        head.translate(BS_RECT_SIDE, 0);
+        m_snake.append(head);
+    } else if (MOVING_DIRECTION_DOWN == m_direction) {
+        m_snake.append(head);
+        head.translate(0, -BS_RECT_SIDE);
+        m_snake.append(head);
+        head.translate(0, -BS_RECT_SIDE);
+        m_snake.append(head);
+    } else {
+        m_snake.append(head);
+        head.translate(0, BS_RECT_SIDE);
+        m_snake.append(head);
+        head.translate(0, BS_RECT_SIDE);
+        m_snake.append(head);
+    }
+    qDebug() << m_direction << m_snake;
 }
 
 void MainWindow::paintEvent(QPaintEvent *event)
@@ -108,9 +150,10 @@ void MainWindow::paintEvent(QPaintEvent *event)
     Q_UNUSED(event);
 
     draw_background();
-    if (m_status == GAME_RUNING) {
-        draw_snake_and_food();
-        snake_move(m_direction);
+    if (m_status == GAME_RUNNING) {
+        snake_move();
+        if (m_status != GAME_OVER)
+            draw_snake_and_food();
     }
 }
 
@@ -120,38 +163,32 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         qDebug() << "key S pressed and game start";
         m_status = GAME_BEGIN;
         run();
+    } else if (GAME_PAUSE == m_status && Qt::Key_Space == event->key()) {
+        // Game pause
+        run();
+    } else if (GAME_RUNNING == m_status && Qt::Key_Space == event->key()) {
+        pause();
     } else {
+        // Snake moving direction control
         switch (event->key()) {
         case Qt::Key_Up:
-            if (MOVING_DIRECTION_UP != m_direction && MOVING_DIRECTION_DOWN != m_direction) {
+            if (MOVING_DIRECTION_DOWN != m_direction)
                 m_direction = MOVING_DIRECTION_UP;
-            }
             break;
 
         case Qt::Key_Down:
-            if (MOVING_DIRECTION_UP != m_direction && MOVING_DIRECTION_DOWN != m_direction) {
+            if (MOVING_DIRECTION_UP != m_direction)
                 m_direction = MOVING_DIRECTION_DOWN;
-            }
             break;
 
         case Qt::Key_Left:
-            if (MOVING_DIRECTION_LEFT != m_direction && MOVING_DIRECTION_RIGHT != m_direction) {
+            if (MOVING_DIRECTION_RIGHT != m_direction)
                 m_direction = MOVING_DIRECTION_LEFT;
-            }
             break;
 
         case Qt::Key_Right:
-            if (MOVING_DIRECTION_LEFT != m_direction && MOVING_DIRECTION_RIGHT != m_direction) {
+            if (MOVING_DIRECTION_LEFT != m_direction)
                 m_direction = MOVING_DIRECTION_RIGHT;
-            }
-            break;
-
-        case Qt::Key_Space:
-            if (m_status == GAME_RUNING) {
-                pause();
-            } else if (m_status == GAME_PAUSE){
-                run();
-            }
             break;
         }
     }
@@ -164,22 +201,23 @@ void MainWindow::setup(void)
     setWindowTitle("SNAKE");
     setStyleSheet("background-color: #333333;");
 
-    m_direction = MOVING_DIRECTION_RIGHT;
+    // setup gaming area
+    m_gaming_area = QRect(BS_POSX, BS_POSY, BS_RECTS_W, BS_RECTS_H);
+
+    // generate food and snake random
     generate_food();
-    for (qint32 i = 0; i < 3; ++i)
-        m_snake.push_back(QPoint((BS_POSX+(BS_RECTS_NUM_W/2-i)*BS_RECT_SIDE),
-                                      (BS_POSY+BS_RECTS_NUM_H/2*BS_RECT_SIDE)));
-    qDebug() << m_snake;
+    generate_snake();
 
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, [=] { update(); });
 
+    // Press KEY_S to start game
     m_status = GAME_OVER;
 }
 
 void MainWindow::pause(void)
 {
-    if (GAME_RUNING == m_status) {
+    if (GAME_RUNNING == m_status) {
         m_timer->stop();
         m_status = GAME_PAUSE;
     }
@@ -189,7 +227,7 @@ void MainWindow::run(void)
 {
     if (GAME_BEGIN == m_status || GAME_PAUSE == m_status) {
         m_timer->start(200);
-        m_status = GAME_RUNING;
+        m_status = GAME_RUNNING;
     }
 }
 

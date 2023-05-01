@@ -6,7 +6,7 @@
 #include <QPaintEvent>
 #include <QPainter>
 #include <QRectF>
-#include <QList>
+#include <QVector>
 #include <QDebug>
 #include <QRandomGenerator>
 
@@ -41,7 +41,7 @@ enum GAME_STATUS
 {
     GAME_BEGIN,
     GAME_PAUSE,
-    GAME_RUNING,
+    GAME_RUNNING,
     GAME_OVER,
 };
 
@@ -55,20 +55,21 @@ public:
 
 private:
     QPainter m_painter;
-    QVector<QPoint> m_snake;
-    QPoint m_food;
+    QVector<QRect> m_snake;
+    QRect m_food;
+    QRect m_gaming_area;
     QTimer *m_timer;
     MOVING_DIRECTION m_direction;
     GAME_STATUS m_status;
 
-    void draw_one_tiny_rect(QColor color, QPoint pos);
-    void draw_background(void);
-    void draw_snake_and_food(void);
-    void generate_food(void);
-    void snake_move(MOVING_DIRECTION dir);
     void setup(void);
     void run(void);
     void pause(void);
+    void draw_background(void);
+    void draw_snake_and_food(void);
+    void generate_food(void);
+    void generate_snake(void);
+    void snake_move();
 
 protected:
     void paintEvent(QPaintEvent *event) override;
